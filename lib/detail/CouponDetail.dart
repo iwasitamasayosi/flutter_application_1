@@ -32,7 +32,7 @@ class CouponDetail extends StatelessWidget {
   Widget mainContent(){
     return Column(
       //  表示するサイズを最小にする
-      mainAxisSize: MainAxisSize.min,
+      //mainAxisSize: MainAxisSize.min,
       children: [
         Image.asset('assets/images/c_img.jpg'),
         mainCenterContent(),
