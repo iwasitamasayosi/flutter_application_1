@@ -9,15 +9,22 @@ class final_exam extends StatelessWidget{
         title : Text("期末試験専用画面")
       ),
       body : Center(
-        child: TextButton(
-          child: Text("最初の画面に戻る"),
-          // （1） 前の画面に戻る
-          onPressed: (){
-            Navigator.push(context, MaterialPageRoute(
-              // （2） 実際に表示するページ(ウィジェット)を指定する
-              builder: (context) => HomePage()
-            ));
-          },
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset('assets/images/c_img.jpg'), // 画像を表示
+            SizedBox(height: 20), // 画像とボタンの間にスペースを追加
+            TextButton(
+              child: Text("最初の画面に戻る"),
+              // （1） 前の画面に戻る
+              onPressed: (){
+                Navigator.push(context, MaterialPageRoute(
+                  // （2） 実際に表示するページ(ウィジェット)を指定する
+                  builder: (context) => HomePage()
+                ));
+              },
+            ),
+          ],
         ),
       )
     );
