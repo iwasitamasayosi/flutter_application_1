@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "611577907913",
+    "project_id": "household-account-book-de2c4",
+    "storage_bucket": "household-account-book-de2c4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:611577907913:android:878416b682f0b276065b18",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdowrCCjymbkgP4ndc8nM4UHDlXtU5jXI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
