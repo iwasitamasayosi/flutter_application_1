@@ -1,39 +1,59 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/final_exam.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-class Income_screen extends StatelessWidget {
+Future<void> main() async {
+  // Fireabse初期化
+  await Firebase.initializeApp();
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: MyFirestorePage(),
+    );
+  }
+}
+
+class MyFirestorePage extends StatefulWidget {
+  @override
+  Income_screen createState() => Income_screen();
+}
+
+class Income_screen extends State<MyFirestorePage> {
   final TextEditingController _contentController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
 
-  Income_screen({super.key});
+  Future<void> _saveIncomeData() async {
+    final String content = _contentController.text;
+    final int? amount = int.tryParse(_amountController.text);
 
-  void _saveIncome(BuildContext context) async {
-    String content = _contentController.text;
-    String amount = _amountController.text;
-
-    if (content.isNotEmpty && amount.isNotEmpty) {
-      try {
-        await FirebaseFirestore.instance.collection('incomes').add({
-          'content': content,
-          'amount': int.tryParse(amount) ?? 0,
-          'timestamp': FieldValue.serverTimestamp(),
+    if (content.isNotEmpty && amount != null) {
+      await FirebaseFirestore.instance
+        .collection('income')
+        .add({
+          'elements': content,
+          'money': amount,
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('収入が保存されました')),
-        );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('収入データを保存しました')),
+      );
 
-        _contentController.clear();
-        _amountController.clear();
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存に失敗しました: $e')),
-        );
-      }
+      _contentController.clear();
+      _amountController.clear();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('すべての項目を入力してください')),
+        SnackBar(content: Text('正しい内容と金額を入力してください')),
       );
     }
   }
@@ -45,6 +65,7 @@ class Income_screen extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextFormField(
               controller: _contentController,
@@ -57,8 +78,8 @@ class Income_screen extends StatelessWidget {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => _saveIncome(context),
-              child: Text("保存"),
+              onPressed: _saveIncomeData,
+              child: Text('保存する'),
             ),
             TextButton(
               child: Text("ホーム画面に戻る"),

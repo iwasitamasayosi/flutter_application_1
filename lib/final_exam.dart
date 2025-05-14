@@ -20,7 +20,7 @@ class final_exam extends StatelessWidget{
               onPressed: (){
                 Navigator.push(context, MaterialPageRoute(
                   // （2） 実際に表示するページ(ウィジェット)を指定する
-                  builder: (context) => Income_screen()
+                  builder: (context) => MyFirestorePage()
                 ));
               },
             ),
