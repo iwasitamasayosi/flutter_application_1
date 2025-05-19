@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/final_exam.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -14,7 +13,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
+      title: '収支レポート',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -30,38 +29,52 @@ class Report_screen extends StatefulWidget {
 }
 
 class Report extends State<Report_screen> {
+  List<DocumentSnapshot> incomeList = [];
+  List<DocumentSnapshot> expenseList = [];
 
-  // 作成したドキュメント一覧
-  List<DocumentSnapshot> documentList = [];
+  Future<void> fetchData() async {
+    final incomeSnapshot =
+        await FirebaseFirestore.instance.collection('income').get();
+    final expenseSnapshot =
+        await FirebaseFirestore.instance.collection('expenditure').get();
+
+    setState(() {
+      incomeList = incomeSnapshot.docs;
+      expenseList = expenseSnapshot.docs;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          children: <Widget>[
-            ElevatedButton(
-              child: Text('ドキュメント一覧取得'),
-              onPressed: () async {
-                // コレクション内のドキュメント一覧を取得
-                final snapshot =
-                    await FirebaseFirestore.instance.collection('income').get();
-                // 取得したドキュメント一覧をUIに反映
-                setState(() {
-                  documentList = snapshot.docs;
-                });
-              },
-            ),
-            // コレクション内のドキュメント一覧を表示
-            Column(
-              children: documentList.map((document) {
-                return ListTile(
-                  title: Text('内容：${document['elements']}'),
-                  subtitle: Text('${document['money']}円'),
-                );
-              }).toList(),
-            ),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            children: <Widget>[
+              ElevatedButton(
+                child: Text('収支を取得'),
+                onPressed: fetchData,
+              ),
+              Text('【収入】', style: TextStyle(fontWeight: FontWeight.bold)),
+              Column(
+                children: incomeList.map((document) {
+                  return ListTile(
+                    title: Text('内容：${document['elements']}'),
+                    subtitle: Text('${document['money']}円'),
+                  );
+                }).toList(),
+              ),
+              Text('【支出】', style: TextStyle(fontWeight: FontWeight.bold)),
+              Column(
+                children: expenseList.map((document) {
+                  return ListTile(
+                    title: Text('内容：${document['elements']}'),
+                    subtitle: Text('${document['money']}円'),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
         ),
       ),
     );
