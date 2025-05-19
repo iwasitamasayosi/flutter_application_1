@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/HomePage.dart';
 import 'package:flutter_application_1/Income_Screen.dart';
-import 'package:flutter_application_1/Expenditure_screen.dart'; // ① 追加
+import 'package:flutter_application_1/Expenditure_screen.dart';
+import 'package:flutter_application_1/Report.dart';
 
 class final_exam extends StatelessWidget {
   @override
@@ -28,7 +29,16 @@ class final_exam extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => Expenditure()), // ② 追加
+                  MaterialPageRoute(builder: (context) => Expenditure()),
+                );
+              },
+            ),
+            ElevatedButton(
+              child: Text('収支の確認'),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => Report_screen()),
                 );
               },
             ),
