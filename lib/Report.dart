@@ -34,6 +34,9 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
   int totalIncome = 0;
   int totalExpense = 0;
   late TabController _tabController;
+  String? selectedMonth;
+  List<String> availableMonths = [];
+
 
   @override
   void initState() {
@@ -42,20 +45,100 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
     fetchData();
   }
 
+  void updateTotals() {
+  if (selectedMonth == null) return;
+
+  final filteredIncome = incomeList.where((doc) {
+    final date = (doc['date'] as Timestamp).toDate();
+    final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+    return key == selectedMonth;
+  }).toList();
+
+  final filteredExpense = expenseList.where((doc) {
+    final date = (doc['date'] as Timestamp).toDate();
+    final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+    return key == selectedMonth;
+  }).toList();
+
+  setState(() {
+    totalIncome = filteredIncome.fold(0, (sum, doc) => sum + (doc['money'] as int));
+    totalExpense = filteredExpense.fold(0, (sum, doc) => sum + (doc['money'] as int));
+  });
+}
+
   Future<void> fetchData() async {
-    final incomeSnapshot =
-        await FirebaseFirestore.instance.collection('income').get();
-    final expenseSnapshot =
-        await FirebaseFirestore.instance.collection('expenditure').get();
+  final incomeSnapshot = await FirebaseFirestore.instance.collection('income').get();
+  final expenseSnapshot = await FirebaseFirestore.instance.collection('expenditure').get();
 
-    setState(() {
-      incomeList = incomeSnapshot.docs;
-      expenseList = expenseSnapshot.docs;
+  incomeList = incomeSnapshot.docs;
+  expenseList = expenseSnapshot.docs;
 
-      totalIncome = incomeList.fold(0, (sum, doc) => sum + (doc['money'] as int));
-      totalExpense = expenseList.fold(0, (sum, doc) => sum + (doc['money'] as int));
-    });
+  // 月一覧を取得
+  Set<String> months = {};
+  for (var doc in [...incomeList, ...expenseList]) {
+    Timestamp timestamp = doc['date'];
+    DateTime date = timestamp.toDate();
+    String monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+    months.add(monthKey);
   }
+
+  setState(() {
+    availableMonths = months.toList()..sort();
+    selectedMonth ??= availableMonths.isNotEmpty ? availableMonths.last : null;
+  });
+
+  updateTotals();
+}
+
+
+  Map<String, List<DocumentSnapshot>> groupByMonth(List<DocumentSnapshot> docs) {
+    Map<String, List<DocumentSnapshot>> monthlyMap = {};
+
+    for (var doc in docs) {
+      Timestamp timestamp = doc['date'];
+      DateTime date = timestamp.toDate();
+      String monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+
+      monthlyMap.putIfAbsent(monthKey, () => []).add(doc);
+    }
+
+    return monthlyMap;
+  }
+
+  Widget buildMonthlyCategoryList(List<DocumentSnapshot> dataList) {
+    if (selectedMonth == null) return Center(child: Text('月を選択してください'));
+
+    final filteredDocs = dataList.where((doc) {
+      final date = (doc['date'] as Timestamp).toDate();
+      final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+      return key == selectedMonth;
+    }).toList();
+
+    Map<String, List<DocumentSnapshot>> categoryMap = {};
+    for (var doc in filteredDocs) {
+      String category = doc['elements'] ?? '未分類';
+      categoryMap.putIfAbsent(category, () => []).add(doc);
+    }
+
+    return ListView(
+      children: categoryMap.entries.map((entry) {
+        String category = entry.key;
+        List<DocumentSnapshot> items = entry.value;
+        int total = items.fold(0, (sum, doc) => sum + (doc['money'] as int));
+
+        return ExpansionTile(
+          title: Text('$category：${total}円'),
+          children: items.map((doc) {
+            return ListTile(
+              title: Text('内容：${doc['elements']}'),
+              subtitle: Text('${doc['money']}円'),
+            );
+          }).toList(),
+        );
+      }).toList(),
+    );
+  }
+
 
   Widget buildCategoryList(List<DocumentSnapshot> dataList) {
   Map<String, List<DocumentSnapshot>> categoryMap = {};
@@ -103,6 +186,24 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
               ],
             ),
           ),
+
+          DropdownButton<String>(
+            value: selectedMonth,
+            hint: Text('月を選択'),
+            items: availableMonths.map((month) {
+              return DropdownMenuItem(
+                value: month,
+                child: Text(month),
+              );
+            }).toList(),
+            onChanged: (value) {
+              setState(() {
+                selectedMonth = value;
+                updateTotals();
+              });
+            },
+          ),
+
           TabBar(
             controller: _tabController,
             tabs: [
@@ -112,12 +213,13 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
             labelColor: Colors.blue,
             unselectedLabelColor: Colors.grey,
           ),
+
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-               buildCategoryList(incomeList),
-               buildCategoryList(expenseList),
+               buildMonthlyCategoryList(incomeList),
+               buildMonthlyCategoryList(expenseList),
               ],
             ),
           ),
