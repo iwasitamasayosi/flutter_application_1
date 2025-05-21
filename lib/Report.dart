@@ -57,6 +57,33 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
     });
   }
 
+  Widget buildCategoryList(List<DocumentSnapshot> dataList) {
+  Map<String, List<DocumentSnapshot>> categoryMap = {};
+  for (var doc in dataList) {
+    String category = doc['elements'] ?? '未分類';
+    categoryMap.putIfAbsent(category, () => []).add(doc);
+  }
+
+  return ListView(
+    children: categoryMap.entries.map((entry) {
+      String category = entry.key;
+      List<DocumentSnapshot> items = entry.value;
+      int total = items.fold(0, (sum, doc) => sum + (doc['money'] as int));
+
+      return ExpansionTile(
+        title: Text('$category：${total}円'),
+        children: items.map((doc) {
+          return ListTile(
+            title: Text('内容：${doc['elements']}'),
+            subtitle: Text('${doc['money']}円'),
+          );
+        }).toList(),
+      );
+    }).toList(),
+  );
+}
+
+
   @override
   Widget build(BuildContext context) {
     int balance = totalIncome - totalExpense;
@@ -89,24 +116,8 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
             child: TabBarView(
               controller: _tabController,
               children: [
-                // 収入リスト
-                ListView(
-                  children: incomeList.map((document) {
-                    return ListTile(
-                      title: Text('内容：${document['elements']}'),
-                      subtitle: Text('${document['money']}円'),
-                    );
-                  }).toList(),
-                ),
-                // 支出リスト
-                ListView(
-                  children: expenseList.map((document) {
-                    return ListTile(
-                      title: Text('内容：${document['elements']}'),
-                      subtitle: Text('${document['money']}円'),
-                    );
-                  }).toList(),
-                ),
+               buildCategoryList(incomeList),
+               buildCategoryList(expenseList),
               ],
             ),
           ),
