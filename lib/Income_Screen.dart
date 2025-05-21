@@ -30,30 +30,31 @@ class MyFirestorePage extends StatefulWidget {
 }
 
 class Income_screen extends State<MyFirestorePage> {
-  final TextEditingController _contentController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
+  String? _selectedCategory;
+
+  final List<String> _categories = ['給料', 'ボーナス', '副業', 'おこづかい','臨時収入'];
 
   Future<void> _saveIncomeData() async {
-    final String content = _contentController.text;
     final int? amount = int.tryParse(_amountController.text);
 
-    if (content.isNotEmpty && amount != null) {
-      await FirebaseFirestore.instance
-        .collection('income')
-        .add({
-          'elements': content,
-          'money': amount,
-        });
+    if (_selectedCategory != null && amount != null) {
+      await FirebaseFirestore.instance.collection('income').add({
+        'elements': _selectedCategory,
+        'money': amount,
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('収入データを保存しました')),
       );
 
-      _contentController.clear();
+      setState(() {
+        _selectedCategory = null;
+      });
       _amountController.clear();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('正しい内容と金額を入力してください')),
+        SnackBar(content: Text('カテゴリと正しい金額を入力してください')),
       );
     }
   }
@@ -67,9 +68,20 @@ class Income_screen extends State<MyFirestorePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TextFormField(
-              controller: _contentController,
-              decoration: InputDecoration(labelText: '収入の内容'),
+            DropdownButtonFormField<String>(
+              value: _selectedCategory,
+              decoration: InputDecoration(labelText: '収入のカテゴリ'),
+              items: _categories.map((category) {
+                return DropdownMenuItem(
+                  value: category,
+                  child: Text(category),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategory = value;
+                });
+              },
             ),
             TextFormField(
               controller: _amountController,
@@ -96,3 +108,4 @@ class Income_screen extends State<MyFirestorePage> {
     );
   }
 }
+
