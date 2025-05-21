@@ -30,30 +30,50 @@ class Expenditure extends StatefulWidget {
 }
 
 class Expenditure_screen extends State<Expenditure> {
-  final TextEditingController _contentController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
+  DateTime? _selectedDate;
+  String? _selectedCategory;
+
+  final List<String> _categories = ['食費', '交通費', '娯楽', '日用品', '医療', 'その他'];
+
+  Future<void> _pickDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
 
   Future<void> _saveIncomeData() async {
-    final String content = _contentController.text;
     final int? amount = int.tryParse(_amountController.text);
 
-    if (content.isNotEmpty && amount != null) {
+    if (amount != null && _selectedDate != null && _selectedCategory != null) {
       await FirebaseFirestore.instance
-        .collection('expenditure')
-        .add({
-          'elements': content,
-          'money': amount,
-        });
+          .collection('expenditure')
+          .add({
+            'money': amount,
+            'date': Timestamp.fromDate(_selectedDate!),
+            'elements': _selectedCategory,
+          });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('支出データを保存しました')),
       );
 
-      _contentController.clear();
       _amountController.clear();
+      setState(() {
+        _selectedDate = null;
+        _selectedCategory = null;
+      });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('正しい内容と金額を入力してください')),
+        SnackBar(content: Text('金額、日付、カテゴリをすべて入力してください')),
       );
     }
   }
@@ -67,14 +87,40 @@ class Expenditure_screen extends State<Expenditure> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TextFormField(
-              controller: _contentController,
-              decoration: InputDecoration(labelText: '支出の内容'),
+            DropdownButtonFormField<String>(
+              value: _selectedCategory,
+              decoration: InputDecoration(labelText: 'カテゴリを選択'),
+              items: _categories.map((category) {
+                return DropdownMenuItem(
+                  value: category,
+                  child: Text(category),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategory = value;
+                });
+              },
             ),
             TextFormField(
               controller: _amountController,
               decoration: InputDecoration(labelText: '金額'),
               keyboardType: TextInputType.number,
+            ),
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Text(
+                  _selectedDate == null
+                      ? '日付が選択されていません'
+                      : '選択された日付: ${_selectedDate!.toLocal().toString().split(' ')[0]}',
+                ),
+                Spacer(),
+                TextButton(
+                  onPressed: _pickDate,
+                  child: Text('日付を選択'),
+                ),
+              ],
             ),
             SizedBox(height: 20),
             ElevatedButton(
@@ -96,3 +142,6 @@ class Expenditure_screen extends State<Expenditure> {
     );
   }
 }
+
+
+

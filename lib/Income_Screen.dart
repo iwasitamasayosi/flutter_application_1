@@ -32,16 +32,32 @@ class MyFirestorePage extends StatefulWidget {
 class Income_screen extends State<MyFirestorePage> {
   final TextEditingController _amountController = TextEditingController();
   String? _selectedCategory;
+  DateTime? _selectedDate;
 
   final List<String> _categories = ['給料', 'ボーナス', '副業', 'おこづかい','臨時収入'];
+
+  Future<void> _pickDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
 
   Future<void> _saveIncomeData() async {
     final int? amount = int.tryParse(_amountController.text);
 
-    if (_selectedCategory != null && amount != null) {
+    if (_selectedCategory != null && amount != null && _selectedDate != null) {
       await FirebaseFirestore.instance.collection('income').add({
         'elements': _selectedCategory,
         'money': amount,
+        'date': Timestamp.fromDate(_selectedDate!), 
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -50,11 +66,12 @@ class Income_screen extends State<MyFirestorePage> {
 
       setState(() {
         _selectedCategory = null;
+        _selectedDate = null;
       });
       _amountController.clear();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('カテゴリと正しい金額を入力してください')),
+        SnackBar(content: Text('カテゴリ、金額、日付をすべて入力してください')),
       );
     }
   }
@@ -88,6 +105,21 @@ class Income_screen extends State<MyFirestorePage> {
               decoration: InputDecoration(labelText: '金額'),
               keyboardType: TextInputType.number,
             ),
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Text(
+                  _selectedDate == null
+                      ? '日付が選択されていません'
+                      : '選択された日付: ${_selectedDate!.toLocal().toString().split(' ')[0]}',
+                ),
+                Spacer(),
+                TextButton(
+                  onPressed: _pickDate,
+                  child: Text('日付を選択'),
+                ),
+              ],
+            ),
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: _saveIncomeData,
@@ -108,4 +140,5 @@ class Income_screen extends State<MyFirestorePage> {
     );
   }
 }
+
 
