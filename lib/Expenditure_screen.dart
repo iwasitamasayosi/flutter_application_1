@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/final_exam.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -126,15 +125,6 @@ class Expenditure_screen extends State<Expenditure> {
             ElevatedButton(
               onPressed: _saveIncomeData,
               child: Text('保存する'),
-            ),
-            TextButton(
-              child: Text("ホーム画面に戻る"),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => final_exam()),
-                );
-              },
             ),
           ],
         ),
