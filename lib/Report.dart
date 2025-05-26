@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 Future<void> main() async {
   // Fireabse初期化
@@ -46,25 +47,25 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
   }
 
   void updateTotals() {
-  if (selectedMonth == null) return;
+    if (selectedMonth == null) return;
 
-  final filteredIncome = incomeList.where((doc) {
-    final date = (doc['date'] as Timestamp).toDate();
-    final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-    return key == selectedMonth;
-  }).toList();
+    final filteredIncome = incomeList.where((doc) {
+      final date = (doc['date'] as Timestamp).toDate();
+      final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+      return key == selectedMonth;
+    }).toList();
 
-  final filteredExpense = expenseList.where((doc) {
-    final date = (doc['date'] as Timestamp).toDate();
-    final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-    return key == selectedMonth;
-  }).toList();
+    final filteredExpense = expenseList.where((doc) {
+      final date = (doc['date'] as Timestamp).toDate();
+      final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+      return key == selectedMonth;
+    }).toList();
 
-  setState(() {
-    totalIncome = filteredIncome.fold(0, (sum, doc) => sum + (doc['money'] as int));
-    totalExpense = filteredExpense.fold(0, (sum, doc) => sum + (doc['money'] as int));
-  });
-}
+    setState(() {
+      totalIncome = filteredIncome.fold(0, (sum, doc) => sum + (doc['money'] as int));
+      totalExpense = filteredExpense.fold(0, (sum, doc) => sum + (doc['money'] as int));
+    });
+  }
 
   Future<void> fetchData() async {
   final incomeSnapshot = await FirebaseFirestore.instance.collection('income').get();
@@ -139,32 +140,95 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
     );
   }
 
+  Widget buildPieChart(List<DocumentSnapshot> dataList, String? selectedMonth) {
+    if (dataList.isEmpty || selectedMonth == null) {
+      return Center(child: Text('データがありません'));
+    }
 
-  Widget buildCategoryList(List<DocumentSnapshot> dataList) {
-  Map<String, List<DocumentSnapshot>> categoryMap = {};
-  for (var doc in dataList) {
-    String category = doc['elements'] ?? '未分類';
-    categoryMap.putIfAbsent(category, () => []).add(doc);
-  }
+    // 月でフィルタリング
+    final filteredDocs = dataList.where((doc) {
+      final date = (doc['date'] as Timestamp).toDate();
+      final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+      return key == selectedMonth;
+    }).toList();
 
-  return ListView(
-    children: categoryMap.entries.map((entry) {
-      String category = entry.key;
-      List<DocumentSnapshot> items = entry.value;
-      int total = items.fold(0, (sum, doc) => sum + (doc['money'] as int));
+    if (filteredDocs.isEmpty) {
+      return Center(child: Text('選択された月にデータがありません'));
+    }
 
-      return ExpansionTile(
-        title: Text('$category：${total}円'),
-        children: items.map((doc) {
-          return ListTile(
-            title: Text('内容：${doc['elements']}'),
-            subtitle: Text('${doc['money']}円'),
+    // カテゴリごとの合計を計算
+    Map<String, int> categoryTotals = {};
+    for (var doc in filteredDocs) {
+      String category = doc['elements'] ?? '未分類';
+      int amount = doc['money'] as int;
+      categoryTotals[category] = (categoryTotals[category] ?? 0) + amount;
+    }
+
+    // 合計金額
+    final total = categoryTotals.values.fold(0, (sum, val) => sum + val);
+
+    // 割合が大きい順にソート
+    final sortedEntries = categoryTotals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final colors = [
+      Colors.blue,
+      Colors.red,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+      Colors.teal,
+      Colors.brown,
+      Colors.indigo,
+      Colors.pink,
+      Colors.cyan,
+    ];
+
+    int colorIndex = 0;
+
+    return PieChart(
+      PieChartData(
+        sections: sortedEntries.map((entry) {
+          final percentage = (entry.value / total * 100).toStringAsFixed(1);
+          return PieChartSectionData(
+            color: colors[colorIndex++ % colors.length],
+            value: entry.value.toDouble(),
+            title: '${entry.key}\n$percentage%',
+            radius: 60,
+            titleStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
           );
         }).toList(),
-      );
-    }).toList(),
-  );
-}
+      ),
+    );
+  }
+
+
+
+  Widget buildCategoryList(List<DocumentSnapshot> dataList) {
+    Map<String, List<DocumentSnapshot>> categoryMap = {};
+    for (var doc in dataList) {
+      String category = doc['elements'] ?? '未分類';
+      categoryMap.putIfAbsent(category, () => []).add(doc);
+    }
+
+    return ListView(
+      children: categoryMap.entries.map((entry) {
+        String category = entry.key;
+        List<DocumentSnapshot> items = entry.value;
+        int total = items.fold(0, (sum, doc) => sum + (doc['money'] as int));
+
+        return ExpansionTile(
+          title: Text('$category：${total}円'),
+          children: items.map((doc) {
+            return ListTile(
+              title: Text('内容：${doc['elements']}'),
+              subtitle: Text('${doc['money']}円'),
+            );
+          }).toList(),
+        );
+      }).toList(),
+    );
+  }
 
 
   @override
@@ -204,6 +268,7 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
             },
           ),
 
+          //タブの選択肢
           TabBar(
             controller: _tabController,
             tabs: [
@@ -218,11 +283,22 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
             child: TabBarView(
               controller: _tabController,
               children: [
-               buildMonthlyCategoryList(incomeList),
-               buildMonthlyCategoryList(expenseList),
+                Column(
+                  children: [
+                    SizedBox(height: 200, child: buildPieChart(incomeList, selectedMonth)),
+                    Expanded(child: buildMonthlyCategoryList(incomeList)),
+                  ],
+                ),
+                Column(
+                  children: [
+                    SizedBox(height: 200, child: buildPieChart(expenseList, selectedMonth)),
+                    Expanded(child: buildMonthlyCategoryList(expenseList)),
+                  ],
+                ),
               ],
             ),
           ),
+
           ElevatedButton(
             child: Text('収支を再取得'),
             onPressed: fetchData,
