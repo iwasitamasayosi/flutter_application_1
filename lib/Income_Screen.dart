@@ -30,6 +30,8 @@ class MyFirestorePage extends StatefulWidget {
 
 class Income_screen extends State<MyFirestorePage> {
   final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _memoController = TextEditingController();
+
   String? _selectedCategory;
   DateTime? _selectedDate;
 
@@ -57,6 +59,7 @@ class Income_screen extends State<MyFirestorePage> {
         'elements': _selectedCategory,
         'money': amount,
         'date': Timestamp.fromDate(_selectedDate!), 
+        'memo': _memoController.text, 
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -68,6 +71,7 @@ class Income_screen extends State<MyFirestorePage> {
         _selectedDate = null;
       });
       _amountController.clear();
+      _memoController.clear();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('カテゴリ、金額、日付をすべて入力してください')),
@@ -103,6 +107,11 @@ class Income_screen extends State<MyFirestorePage> {
               controller: _amountController,
               decoration: InputDecoration(labelText: '金額'),
               keyboardType: TextInputType.number,
+            ),
+            TextFormField(
+              controller: _memoController,
+              decoration: InputDecoration(labelText: 'メモ（任意）'),
+              keyboardType: TextInputType.text,
             ),
             SizedBox(height: 10),
             Row(

@@ -30,6 +30,8 @@ class Expenditure extends StatefulWidget {
 
 class Expenditure_screen extends State<Expenditure> {
   final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _memoController = TextEditingController();
+
   DateTime? _selectedDate;
   String? _selectedCategory;
 
@@ -59,6 +61,7 @@ class Expenditure_screen extends State<Expenditure> {
             'money': amount,
             'date': Timestamp.fromDate(_selectedDate!),
             'elements': _selectedCategory,
+            'memo': _memoController.text, 
           });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -66,6 +69,7 @@ class Expenditure_screen extends State<Expenditure> {
       );
 
       _amountController.clear();
+      _memoController.clear();
       setState(() {
         _selectedDate = null;
         _selectedCategory = null;
@@ -105,6 +109,11 @@ class Expenditure_screen extends State<Expenditure> {
               controller: _amountController,
               decoration: InputDecoration(labelText: '金額'),
               keyboardType: TextInputType.number,
+            ),
+            TextFormField(
+              controller: _memoController,
+              decoration: InputDecoration(labelText: 'メモ（任意）'),
+              keyboardType: TextInputType.text,
             ),
             SizedBox(height: 10),
             Row(
