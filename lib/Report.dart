@@ -132,7 +132,16 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
           children: items.map((doc) {
             return ListTile(
               title: Text('内容：${doc['elements']}'),
-              subtitle: Text('${doc['money']}円'),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${doc['money']}円'),
+                  if (doc.data() != null &&
+                      (doc.data() as Map<String, dynamic>).containsKey('memo') &&
+                      (doc['memo'] as String).isNotEmpty)
+                    Text('メモ：${doc['memo']}', style: TextStyle(color: Colors.grey[700])),
+                ],
+              ),
             );
           }).toList(),
         );
