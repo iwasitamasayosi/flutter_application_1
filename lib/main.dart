@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_application_1/final_exam.dart';
 import 'firebase_options.dart'; 
-import 'package:flutter_application_1/HomePage.dart';
+import 'package:flutter_application_1/final_exam.dart';
 import 'package:flutter_application_1/MainPageWidget.dart';
 
 
@@ -42,7 +43,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: HomePage(),
+      home: final_exam(),
     );
   }
 }
