@@ -4,7 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 Future<void> main() async {
-  // Fireabse初期化
+  // Firebase初期化
   await Firebase.initializeApp();
   runApp(MyApp());
 }
@@ -38,7 +38,6 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
   String? selectedMonth;
   List<String> availableMonths = [];
 
-
   @override
   void initState() {
     super.initState();
@@ -47,19 +46,22 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
   }
 
   void updateTotals() {
-    if (selectedMonth == null) return;
+    // If selectedMonth is 'All', use the full lists; otherwise, filter by month.
+    final List<DocumentSnapshot> filteredIncome = selectedMonth == 'All'
+        ? incomeList
+        : incomeList.where((doc) {
+            final date = (doc['date'] as Timestamp).toDate();
+            final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+            return key == selectedMonth;
+          }).toList();
 
-    final filteredIncome = incomeList.where((doc) {
-      final date = (doc['date'] as Timestamp).toDate();
-      final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      return key == selectedMonth;
-    }).toList();
-
-    final filteredExpense = expenseList.where((doc) {
-      final date = (doc['date'] as Timestamp).toDate();
-      final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      return key == selectedMonth;
-    }).toList();
+    final List<DocumentSnapshot> filteredExpense = selectedMonth == 'All'
+        ? expenseList
+        : expenseList.where((doc) {
+            final date = (doc['date'] as Timestamp).toDate();
+            final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+            return key == selectedMonth;
+          }).toList();
 
     setState(() {
       totalIncome = filteredIncome.fold(0, (sum, doc) => sum + (doc['money'] as int));
@@ -68,29 +70,30 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
   }
 
   Future<void> fetchData() async {
-  final incomeSnapshot = await FirebaseFirestore.instance.collection('income').get();
-  final expenseSnapshot = await FirebaseFirestore.instance.collection('expenditure').get();
+    final incomeSnapshot = await FirebaseFirestore.instance.collection('income').get();
+    final expenseSnapshot = await FirebaseFirestore.instance.collection('expenditure').get();
 
-  incomeList = incomeSnapshot.docs;
-  expenseList = expenseSnapshot.docs;
+    incomeList = incomeSnapshot.docs;
+    expenseList = expenseSnapshot.docs;
 
-  // 月一覧を取得
-  Set<String> months = {};
-  for (var doc in [...incomeList, ...expenseList]) {
-    Timestamp timestamp = doc['date'];
-    DateTime date = timestamp.toDate();
-    String monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-    months.add(monthKey);
+    Set<String> months = {};
+    for (var doc in [...incomeList, ...expenseList]) {
+      Timestamp timestamp = doc['date'];
+      DateTime date = timestamp.toDate();
+      String monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+      months.add(monthKey);
+    }
+
+    setState(() {
+      availableMonths = months.toList()..sort();
+      // Add 'All Periods' option
+      availableMonths.insert(0, 'All');
+      // Set the default selected month to 'All' or the last available month
+      selectedMonth ??= availableMonths.isNotEmpty ? availableMonths.first : null;
+    });
+
+    updateTotals();
   }
-
-  setState(() {
-    availableMonths = months.toList()..sort();
-    selectedMonth ??= availableMonths.isNotEmpty ? availableMonths.last : null;
-  });
-
-  updateTotals();
-}
-
 
   Map<String, List<DocumentSnapshot>> groupByMonth(List<DocumentSnapshot> docs) {
     Map<String, List<DocumentSnapshot>> monthlyMap = {};
@@ -109,11 +112,18 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
   Widget buildMonthlyCategoryList(List<DocumentSnapshot> dataList) {
     if (selectedMonth == null) return Center(child: Text('月を選択してください'));
 
-    final filteredDocs = dataList.where((doc) {
-      final date = (doc['date'] as Timestamp).toDate();
-      final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      return key == selectedMonth;
-    }).toList();
+    // Filter documents based on the selected month, or include all if 'All' is selected.
+    final filteredDocs = selectedMonth == 'All'
+        ? dataList
+        : dataList.where((doc) {
+            final date = (doc['date'] as Timestamp).toDate();
+            final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+            return key == selectedMonth;
+          }).toList();
+
+    if (filteredDocs.isEmpty) {
+      return Center(child: Text('データがありません'));
+    }
 
     Map<String, List<DocumentSnapshot>> categoryMap = {};
     for (var doc in filteredDocs) {
@@ -154,18 +164,19 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
       return Center(child: Text('データがありません'));
     }
 
-    // 月でフィルタリング
-    final filteredDocs = dataList.where((doc) {
-      final date = (doc['date'] as Timestamp).toDate();
-      final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      return key == selectedMonth;
-    }).toList();
+    // Filter documents based on the selected month, or include all if 'All' is selected.
+    final filteredDocs = selectedMonth == 'All'
+        ? dataList
+        : dataList.where((doc) {
+            final date = (doc['date'] as Timestamp).toDate();
+            final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+            return key == selectedMonth;
+          }).toList();
 
     if (filteredDocs.isEmpty) {
       return Center(child: Text('選択された月にデータがありません'));
     }
 
-    // カテゴリごとの合計を計算
     Map<String, int> categoryTotals = {};
     for (var doc in filteredDocs) {
       String category = doc['elements'] ?? '未分類';
@@ -173,10 +184,8 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
       categoryTotals[category] = (categoryTotals[category] ?? 0) + amount;
     }
 
-    // 合計金額
     final total = categoryTotals.values.fold(0, (sum, val) => sum + val);
 
-    // 割合が大きい順にソート
     final sortedEntries = categoryTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -211,35 +220,6 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
     );
   }
 
-
-
-  Widget buildCategoryList(List<DocumentSnapshot> dataList) {
-    Map<String, List<DocumentSnapshot>> categoryMap = {};
-    for (var doc in dataList) {
-      String category = doc['elements'] ?? '未分類';
-      categoryMap.putIfAbsent(category, () => []).add(doc);
-    }
-
-    return ListView(
-      children: categoryMap.entries.map((entry) {
-        String category = entry.key;
-        List<DocumentSnapshot> items = entry.value;
-        int total = items.fold(0, (sum, doc) => sum + (doc['money'] as int));
-
-        return ExpansionTile(
-          title: Text('$category：${total}円'),
-          children: items.map((doc) {
-            return ListTile(
-              title: Text('内容：${doc['elements']}'),
-              subtitle: Text('${doc['money']}円'),
-            );
-          }).toList(),
-        );
-      }).toList(),
-    );
-  }
-
-
   @override
   Widget build(BuildContext context) {
     int balance = totalIncome - totalExpense;
@@ -266,7 +246,7 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
             items: availableMonths.map((month) {
               return DropdownMenuItem(
                 value: month,
-                child: Text(month),
+                child: Text(month == 'All' ? '全期間' : month),
               );
             }).toList(),
             onChanged: (value) {
@@ -277,7 +257,6 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
             },
           ),
 
-          //タブの選択肢
           TabBar(
             controller: _tabController,
             tabs: [
@@ -323,5 +302,3 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 }
-
-
