@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/HomePage.dart';
+import 'package:flutter_application_1/Comparison.dart';
 import 'package:flutter_application_1/Income_Screen.dart';
 import 'package:flutter_application_1/Expenditure_screen.dart';
 import 'package:flutter_application_1/Report.dart';
@@ -42,13 +42,12 @@ class final_exam extends StatelessWidget {
                 );
               },
             ),
-            SizedBox(height: 20),
-            TextButton(
-              child: Text("最初の画面に戻る"),
+            ElevatedButton(
+              child: Text('収支の比較'),
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => HomePage()),
+                  MaterialPageRoute(builder: (context) => Comparison_screen()),
                 );
               },
             ),
