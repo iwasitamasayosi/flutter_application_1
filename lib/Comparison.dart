@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: '収支レポート',
+      title: '収支確認画面',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -40,9 +40,8 @@ class Comparison extends State<Comparison_screen> {
   String? selectedMonthLeft;
   String? selectedMonthRight;
 
-  // New state variables for content selection
-  String selectedContentTypeLeft = 'income'; // 'income', 'expense', 'balance'
-  String selectedContentTypeRight = 'expense'; // 'income', 'expense', 'balance'
+  // 表示内容を左右で連動させるための単一のState変数
+  String selectedContentType = 'income';
 
   @override
   void initState() {
@@ -57,7 +56,6 @@ class Comparison extends State<Comparison_screen> {
     });
   }
 
-  /// Firestoreから収入と支出のデータを取得し、利用可能な月を更新します。
   Future<void> fetchData() async {
     try {
       final incomeSnapshot = await FirebaseFirestore.instance.collection('income').get();
@@ -79,7 +77,7 @@ class Comparison extends State<Comparison_screen> {
       setState(() {
         // 月をソートし、'全期間'オプションを追加
         availableMonths = months.toList()..sort();
-        availableMonths.insert(0, 'All'); // 'All' for '全期間'
+        availableMonths.insert(0, 'All');
       });
     } catch (e) {
       // エラーハンドリング
@@ -92,8 +90,6 @@ class Comparison extends State<Comparison_screen> {
     }
   }
 
-  /// 指定された月のカテゴリリストを構築します。
-  /// contentTypeによって表示するデータを切り替えます。
   Widget buildMonthlyCategoryList(String? currentSelectedMonth, String contentType) {
     if (currentSelectedMonth == null) {
       return const Center(child: Text('月を選択してください'));
@@ -106,8 +102,6 @@ class Comparison extends State<Comparison_screen> {
     } else if (contentType == 'expense') {
       docsToDisplay = expenseList;
     } else if (contentType == 'balance') {
-      // For balance, we aggregate both income and expenditure and treat them as one list
-      // This will show individual income and expense items under their categories.
       docsToDisplay = [...incomeList, ...expenseList];
     }
 
@@ -135,11 +129,8 @@ class Comparison extends State<Comparison_screen> {
       children: categoryMap.entries.map((entry) {
         String category = entry.key;
         List<DocumentSnapshot> items = entry.value;
-        // Calculate category total based on whether it's income or expense
         int categoryTotal = items.fold(0, (sum, doc) {
           int amount = doc['money'] as int;
-          // If we are showing 'balance', expenses should be negative for correct aggregation
-          // Check the collection ID to determine if it's an expense
           if (contentType == 'balance' && doc.reference.parent.id == 'expenditure') {
             return sum - amount;
           }
@@ -149,14 +140,12 @@ class Comparison extends State<Comparison_screen> {
         return ExpansionTile(
           title: Text('$category：${categoryTotal}円'),
           children: items.map((doc) {
-            // Fix: Check if 'memo' key exists using .containsKey()
             final memo = (doc.data() as Map<String, dynamic>).containsKey('memo')
                 ? doc['memo'] as String
                 : '';
             final date = (doc['date'] as Timestamp).toDate();
             final formattedDate = '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
             final int amount = doc['money'] as int;
-            // Fix: Access parent.id directly as it's guaranteed not to be null here
             final String type = doc.reference.parent.id == 'income' ? '収入' : '支出';
             final Color amountColor = (type == '収入') ? Colors.green : Colors.red;
 
@@ -187,7 +176,7 @@ class Comparison extends State<Comparison_screen> {
       targetList = incomeList;
     } else if (contentType == 'expense') {
       targetList = expenseList;
-    } else { // contentType == 'balance'
+    } else {
       targetList = [...incomeList, ...expenseList];
     }
 
@@ -202,7 +191,6 @@ class Comparison extends State<Comparison_screen> {
     int total = 0;
     for (var doc in filteredDocs) {
       int amount = doc['money'] as int;
-      // Fix: Access parent.id directly as it's guaranteed not to be null here
       if (doc.reference.parent.id == 'income') {
         total += amount;
       } else if (doc.reference.parent.id == 'expenditure') {
@@ -215,15 +203,31 @@ class Comparison extends State<Comparison_screen> {
   @override
   Widget build(BuildContext context) {
     // 左側の合計を計算
-    final totalLeft = calculateTotal(selectedMonthLeft, selectedContentTypeLeft);
-
+    final totalLeft = calculateTotal(selectedMonthLeft, selectedContentType);
     // 右側の合計を計算
-    final totalRight = calculateTotal(selectedMonthRight, selectedContentTypeRight);
+    final totalRight = calculateTotal(selectedMonthRight, selectedContentType);
 
     return Scaffold(
       appBar: AppBar(title: const Text('収支レポート比較')),
       body: Column(
         children: [
+          // 左右共通の表示内容選択ドロップダウン
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: DropdownButton<String>(
+              value: selectedContentType,
+              items: const [
+                DropdownMenuItem(value: 'income', child: Text('収入を表示')),
+                DropdownMenuItem(value: 'expense', child: Text('支出を表示')),
+                DropdownMenuItem(value: 'balance', child: Text('収支を表示')),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  selectedContentType = value!;
+                });
+              },
+            ),
+          ),
           Expanded(
             child: Row(
               children: [
@@ -233,18 +237,18 @@ class Comparison extends State<Comparison_screen> {
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
                       children: [
-                        DropdownButton<String>(
-                          value: selectedContentTypeLeft,
-                          items: const [
-                            DropdownMenuItem(value: 'income', child: Text('収入')),
-                            DropdownMenuItem(value: 'expense', child: Text('支出')),
-                            DropdownMenuItem(value: 'balance', child: Text('収支')),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              selectedContentTypeLeft = value!;
-                            });
-                          },
+                        // 表示内容に応じたタイトル
+                        Text(
+                          selectedContentType == 'income'
+                              ? '収入'
+                              : selectedContentType == 'expense'
+                                  ? '支出'
+                                  : '収支',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: selectedContentType == 'income' ? Colors.blue : selectedContentType == 'expense' ? Colors.red : Colors.green[700],
+                          ),
                         ),
                         DropdownButton<String>(
                           value: selectedMonthLeft,
@@ -269,7 +273,7 @@ class Comparison extends State<Comparison_screen> {
                           ),
                         ),
                         const Divider(),
-                        Expanded(child: buildMonthlyCategoryList(selectedMonthLeft, selectedContentTypeLeft)),
+                        Expanded(child: buildMonthlyCategoryList(selectedMonthLeft, selectedContentType)),
                       ],
                     ),
                   ),
@@ -282,18 +286,18 @@ class Comparison extends State<Comparison_screen> {
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
                       children: [
-                        DropdownButton<String>(
-                          value: selectedContentTypeRight,
-                          items: const [
-                            DropdownMenuItem(value: 'income', child: Text('収入')),
-                            DropdownMenuItem(value: 'expense', child: Text('支出')),
-                            DropdownMenuItem(value: 'balance', child: Text('収支')),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              selectedContentTypeRight = value!;
-                            });
-                          },
+                        // 表示内容に応じたタイトル
+                        Text(
+                          selectedContentType == 'income'
+                              ? '収入'
+                              : selectedContentType == 'expense'
+                                  ? '支出'
+                                  : '収支',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: selectedContentType == 'income' ? Colors.blue : selectedContentType == 'expense' ? Colors.red : Colors.green[700],
+                          ),
                         ),
                         DropdownButton<String>(
                           value: selectedMonthRight,
@@ -318,7 +322,7 @@ class Comparison extends State<Comparison_screen> {
                           ),
                         ),
                         const Divider(),
-                        Expanded(child: buildMonthlyCategoryList(selectedMonthRight, selectedContentTypeRight)),
+                        Expanded(child: buildMonthlyCategoryList(selectedMonthRight, selectedContentType)),
                       ],
                     ),
                   ),
