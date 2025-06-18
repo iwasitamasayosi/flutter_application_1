@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart'; // Import for date formatting
+import 'package:intl/intl.dart';
 
 Future<void> main() async {
   // Firebase初期化
@@ -47,7 +47,6 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
   }
 
   void updateTotals() {
-    // If selectedMonth is 'All', use the full lists; otherwise, filter by month.
     final List<DocumentSnapshot> filteredIncome = selectedMonth == 'All'
         ? incomeList
         : incomeList.where((doc) {
@@ -87,9 +86,7 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
 
     setState(() {
       availableMonths = months.toList()..sort();
-      // Add 'All Periods' option
       availableMonths.insert(0, 'All');
-      // Set the default selected month to 'All' or the last available month
       selectedMonth ??= availableMonths.isNotEmpty ? availableMonths.first : null;
     });
 
@@ -113,7 +110,6 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
   Widget buildMonthlyCategoryList(List<DocumentSnapshot> dataList) {
     if (selectedMonth == null) return Center(child: Text('月を選択してください'));
 
-    // Filter documents based on the selected month, or include all if 'All' is selected.
     final filteredDocs = selectedMonth == 'All'
         ? dataList
         : dataList.where((doc) {
@@ -144,14 +140,14 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
             // Get date from document and format it
             Timestamp timestamp = doc['date'];
             DateTime date = timestamp.toDate();
-            String formattedDate = DateFormat('yyyy年MM月dd日').format(date); // Format the date
+            String formattedDate = DateFormat('yyyy年MM月dd日').format(date);
 
             return ListTile(
               title: Text('内容：${doc['elements']}'),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('日付：$formattedDate', style: TextStyle(fontSize: 12, color: Colors.grey[600])), // Display the date
+                  Text('日付：$formattedDate', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                   Text('${doc['money']}円'),
                   if (doc.data() != null &&
                       (doc.data() as Map<String, dynamic>).containsKey('memo') &&
@@ -171,7 +167,6 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
       return Center(child: Text('データがありません'));
     }
 
-    // Filter documents based on the selected month, or include all if 'All' is selected.
     final filteredDocs = selectedMonth == 'All'
         ? dataList
         : dataList.where((doc) {

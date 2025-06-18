@@ -35,7 +35,7 @@ class Income_screen extends State<MyFirestorePage> {
   String? _selectedCategory;
   DateTime? _selectedDate;
 
-  final List<String> _categories = ['給料', 'ボーナス', '副業', 'おこづかい','臨時収入'];
+  final List<String> _categories = ['給料', 'ボーナス', '副業', 'おこづかい','臨時収入','その他'];
 
   Future<void> _pickDate() async {
     final DateTime? picked = await showDatePicker(
