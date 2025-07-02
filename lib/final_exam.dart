@@ -29,7 +29,7 @@ class final_exam extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => Expenditure()),
+                  MaterialPageRoute(builder: (context) => ExpenditurePage()),
                 );
               },
             ),
