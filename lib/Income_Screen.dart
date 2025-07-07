@@ -137,14 +137,21 @@ class _IncomeScreenState extends State<MyFirestorePage> {
       return;
     }
 
+    // 保存するデータを作成
+    Map<String, dynamic> incomeData = {
+      'elements': _selectedCategory,
+      'money': amount,
+      'date': Timestamp.fromDate(_selectedDate!),
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    // メモが入力されている場合のみ追加
+    if (_memoController.text.isNotEmpty) {
+      incomeData['memo'] = _memoController.text;
+    }
+
     try {
-      await FirebaseFirestore.instance.collection('income').add({
-        'elements': _selectedCategory,
-        'money': amount,
-        'date': Timestamp.fromDate(_selectedDate!),
-        'memo': _memoController.text.isEmpty ? null : _memoController.text, 
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      await FirebaseFirestore.instance.collection('income').add(incomeData);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -155,7 +162,8 @@ class _IncomeScreenState extends State<MyFirestorePage> {
       );
 
       setState(() {
-        _selectedCategory = null; // 今日の日付にリセット
+        _selectedCategory = null; // カテゴリをリセット
+        _selectedDate = DateTime.now(); // 日付を現在にリセット
       });
       _amountController.clear();
       _memoController.clear();

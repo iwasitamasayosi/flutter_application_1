@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/intl.dart';
+
 Future<void> main() async {
   // Firebase初期化
   WidgetsFlutterBinding.ensureInitialized();
@@ -136,14 +137,21 @@ class _ExpenditureScreenState extends State<ExpenditurePage> {
       return;
     }
 
+    // 保存するデータを作成
+    Map<String, dynamic> expenditureData = {
+      'elements': _selectedCategory,
+      'money': amount,
+      'date': Timestamp.fromDate(_selectedDate!),
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    // メモが入力されている場合のみ追加
+    if (_memoController.text.isNotEmpty) {
+      expenditureData['memo'] = _memoController.text;
+    }
+
     try {
-      await FirebaseFirestore.instance.collection('expenditure').add({
-        'elements': _selectedCategory,
-        'money': amount,
-        'date': Timestamp.fromDate(_selectedDate!),
-        'memo': _memoController.text.isEmpty ? null : _memoController.text,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      await FirebaseFirestore.instance.collection('expenditure').add(expenditureData);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
