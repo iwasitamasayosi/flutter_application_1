@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: '収支レポート',
+      title: '収支確認画面',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -227,7 +227,7 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
     int balance = totalIncome - totalExpense;
 
     return Scaffold(
-      appBar: AppBar(title: Text('収支レポート')),
+      appBar: AppBar(title: Text('収支確認画面')),
       body: Column(
         children: [
           Padding(

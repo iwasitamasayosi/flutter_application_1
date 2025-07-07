@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: '収支確認画面',
+      title: '収支比較画面',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -208,7 +208,7 @@ class Comparison extends State<Comparison_screen> {
     final totalRight = calculateTotal(selectedMonthRight, selectedContentType);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('収支レポート比較')),
+      appBar: AppBar(title: const Text('収支比較画面')),
       body: Column(
         children: [
           // 左右共通の表示内容選択ドロップダウン
