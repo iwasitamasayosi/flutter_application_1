@@ -64,14 +64,18 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
           }).toList();
 
     setState(() {
-      totalIncome = filteredIncome.fold(0, (sum, doc) => sum + (doc['money'] as int));
-      totalExpense = filteredExpense.fold(0, (sum, doc) => sum + (doc['money'] as int));
+      totalIncome =
+          filteredIncome.fold(0, (sum, doc) => sum + (doc['money'] as int));
+      totalExpense =
+          filteredExpense.fold(0, (sum, doc) => sum + (doc['money'] as int));
     });
   }
 
   Future<void> fetchData() async {
-    final incomeSnapshot = await FirebaseFirestore.instance.collection('income').get();
-    final expenseSnapshot = await FirebaseFirestore.instance.collection('expenditure').get();
+    final incomeSnapshot =
+        await FirebaseFirestore.instance.collection('income').get();
+    final expenseSnapshot =
+        await FirebaseFirestore.instance.collection('expenditure').get();
 
     incomeList = incomeSnapshot.docs;
     expenseList = expenseSnapshot.docs;
@@ -107,7 +111,147 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
     return monthlyMap;
   }
 
-  Widget buildMonthlyCategoryList(List<DocumentSnapshot> dataList) {
+  // --- 編集機能の追加部分 ---
+  Future<void> _showEditDialog(
+      DocumentSnapshot doc, String collectionName) async {
+    // memoが存在しない場合やnullの場合でも空文字列として初期化
+    TextEditingController elementsController =
+        TextEditingController(text: doc['elements'] ?? '');
+    TextEditingController moneyController =
+        TextEditingController(text: (doc['money'] ?? 0).toString());
+    TextEditingController memoController =
+        TextEditingController(text: (doc.data() as Map<String, dynamic>).containsKey('memo') ? doc['memo'] : '');
+    DateTime selectedDate = (doc['date'] as Timestamp).toDate();
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('編集'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: elementsController,
+                      decoration: InputDecoration(labelText: '内容'),
+                    ),
+                    TextField(
+                      controller: moneyController,
+                      decoration: InputDecoration(labelText: '金額'),
+                      keyboardType: TextInputType.number,
+                    ),
+                    TextField(
+                      controller: memoController,
+                      decoration: InputDecoration(labelText: 'メモ (オプション)'),
+                    ),
+                    ListTile(
+                      title: Text(
+                          '日付: ${DateFormat('yyyy年MM月dd日').format(selectedDate)}'),
+                      trailing: Icon(Icons.calendar_today),
+                      onTap: () async {
+                        DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2101),
+                        );
+                        if (picked != null && picked != selectedDate) {
+                          setDialogState(() {
+                            selectedDate = picked;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('キャンセル'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+                TextButton(
+                  child: Text('更新'),
+                  onPressed: () async {
+                    try {
+                      await FirebaseFirestore.instance
+                          .collection(collectionName)
+                          .doc(doc.id)
+                          .update({
+                        'elements': elementsController.text,
+                        'money': int.parse(moneyController.text),
+                        'memo': memoController.text,
+                        'date': Timestamp.fromDate(selectedDate),
+                      });
+                      Navigator.of(context).pop();
+                      fetchData(); // 更新後にデータを再取得
+                    } catch (e) {
+                      print('ドキュメントの更新エラー: $e');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('更新に失敗しました: $e')),
+                      );
+                    }
+                  },
+                ),
+                TextButton(
+                  child: Text('削除', style: TextStyle(color: Colors.red)),
+                  onPressed: () async {
+                    bool? confirmDelete = await showDialog<bool>(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text('確認'),
+                          content: Text('この項目を削除してもよろしいですか？'),
+                          actions: <Widget>[
+                            TextButton(
+                              child: Text('キャンセル'),
+                              onPressed: () {
+                                Navigator.of(context).pop(false);
+                              },
+                            ),
+                            TextButton(
+                              child: Text('削除'),
+                              onPressed: () {
+                                Navigator.of(context).pop(true);
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                    );
+
+                    if (confirmDelete == true) {
+                      try {
+                        await FirebaseFirestore.instance
+                            .collection(collectionName)
+                            .doc(doc.id)
+                            .delete();
+                        Navigator.of(context).pop(); // 編集ダイアログを閉じる
+                        fetchData(); // 削除後にデータを再取得
+                      } catch (e) {
+                        print('ドキュメントの削除エラー: $e');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('削除に失敗しました: $e')),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget buildMonthlyCategoryList(
+      List<DocumentSnapshot> dataList, String collectionName) {
     if (selectedMonth == null) return Center(child: Text('月を選択してください'));
 
     final filteredDocs = selectedMonth == 'All'
@@ -137,7 +281,7 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
         return ExpansionTile(
           title: Text('$category：${total}円'),
           children: items.map((doc) {
-            // Get date from document and format it
+            // ドキュメントから日付を取得し、フォーマット
             Timestamp timestamp = doc['date'];
             DateTime date = timestamp.toDate();
             String formattedDate = DateFormat('yyyy年MM月dd日').format(date);
@@ -147,14 +291,17 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('日付：$formattedDate', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  Text('日付：$formattedDate',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                   Text('${doc['money']}円'),
                   if (doc.data() != null &&
                       (doc.data() as Map<String, dynamic>).containsKey('memo') &&
                       (doc['memo'] as String).isNotEmpty)
-                    Text('メモ：${doc['memo']}', style: TextStyle(color: Colors.grey[700])),
+                    Text('メモ：${doc['memo']}',
+                        style: TextStyle(color: Colors.grey[700])),
                 ],
               ),
+              onTap: () => _showEditDialog(doc, collectionName), // onTapを追加
             );
           }).toList(),
         );
@@ -215,7 +362,8 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
             value: entry.value.toDouble(),
             title: '${entry.key}\n$percentage%',
             radius: 60,
-            titleStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+            titleStyle: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
           );
         }).toList(),
       ),
@@ -235,13 +383,18 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('収入合計：${totalIncome}円', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Text('支出合計：${totalExpense}円', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Text('収支：${balance}円', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: balance >= 0 ? Colors.green : Colors.red)),
+                Text('収入合計：${totalIncome}円',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('支出合計：${totalExpense}円',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('収支：${balance}円',
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: balance >= 0 ? Colors.green : Colors.red)),
               ],
             ),
           ),
-
           DropdownButton<String>(
             value: selectedMonth,
             hint: Text('月を選択'),
@@ -258,7 +411,6 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
               });
             },
           ),
-
           TabBar(
             controller: _tabController,
             tabs: [
@@ -268,30 +420,36 @@ class Report extends State<Report_screen> with SingleTickerProviderStateMixin {
             labelColor: Colors.blue,
             unselectedLabelColor: Colors.grey,
           ),
-
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
                 Column(
                   children: [
-                    SizedBox(height: 200, child: buildPieChart(incomeList, selectedMonth)),
-                    Expanded(child: buildMonthlyCategoryList(incomeList)),
+                    SizedBox(
+                        height: 200,
+                        child: buildPieChart(incomeList, selectedMonth)),
+                    Expanded(child: buildMonthlyCategoryList(incomeList, 'income')),
                   ],
                 ),
                 Column(
                   children: [
-                    SizedBox(height: 200, child: buildPieChart(expenseList, selectedMonth)),
-                    Expanded(child: buildMonthlyCategoryList(expenseList)),
+                    SizedBox(
+                        height: 200,
+                        child: buildPieChart(expenseList, selectedMonth)),
+                    Expanded(
+                        child: buildMonthlyCategoryList(expenseList, 'expenditure')),
                   ],
                 ),
               ],
             ),
           ),
-
-          ElevatedButton(
-            child: Text('収支を再取得'),
-            onPressed: fetchData,
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton(
+              child: Text('収支を再取得'),
+              onPressed: fetchData,
+            ),
           ),
         ],
       ),
